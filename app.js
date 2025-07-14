@@ -7,7 +7,7 @@ const multer = require('multer');
 const multerS3 = require('multer-s3');
 const path = require('path');
 const cors = require('cors');
-const serverless = require('serverless-http'); 
+const serverless = require('serverless-http');
 
 const app = express();
 
@@ -17,24 +17,27 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5501', // 프런트엔드 개발 서버 포트
-  'http://127.0.0.1:5501'  // 프런트엔드 개발 서버 포트
+  'http://127.0.0.1:5501',  // 프런트엔드 개발 서버 포트
+  'https://jungyu.store', // jungyu.store 도메인 추가
+  'https://www.jungyu.store' // www.jungyu.store 도메인 추가 (안전한 설정)
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // 요청의 origin이 allowedOrigins 배열에 있는지 확인
+    // 로컬호스트나 127.0.0.1로 시작하는 모든 포트도 허용
     if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
       callback(null, true);
     } else {
-      console.warn(`CORS: Not allowed origin - ${origin}`);
+      console.warn(`CORS: Not allowed origin - ${origin}`); // 디버깅을 위한 경고 로그 
       callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,
-  optionsSuccessStatus: 204
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // 허용할 HTTP 메서드 
+  credentials: true, // 요청에 자격 증명 (쿠키, HTTP 인증 등) 포함 허용
+  optionsSuccessStatus: 204 // OPTIONS 요청에 대한 성공 상태 코드
 };
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
 // --- AWS S3 설정 (v3 방식) ---
@@ -44,7 +47,7 @@ if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
   // Lambda 환경에서는 IAM 역할의 자격 증명을 자동으로 사용합니다.
   // AWS_REGION은 Lambda가 자동으로 제공합니다.
   s3Client = new S3Client({
-    region: process.env.AWS_REGION, 
+    region: process.env.AWS_REGION,
   });
   console.log('S3Client initialized for Lambda environment.');
 } else {
@@ -105,7 +108,7 @@ app.get('/images', async (req, res) => {
   try {
     console.log('Attempting to list objects from S3 bucket:', process.env.AWS_BUCKET_NAME, 'with prefix:', params.Prefix); // ✨ 추가
     const data = await s3Client.send(new ListObjectsV2Command(params));
-    
+
     console.log('S3 ListObjectsV2Command response data (truncated):', JSON.stringify(data, null, 2).substring(0, 500) + '...'); // ✨ 응답 데이터 로깅 (길이 제한)
 
     if (!data.Contents || data.Contents.length === 0) {
@@ -116,7 +119,7 @@ app.get('/images', async (req, res) => {
       .filter(item => item.Size > 0)
       .sort((a, b) => b.LastModified - a.LastModified)
       .map(item => `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${item.Key}`);
-    
+
     console.log('Successfully generated image URLs count:', imageUrls.length); // ✨ 추가
     res.json(imageUrls);
   } catch (err) {
@@ -186,14 +189,14 @@ app.delete('/images/batch', checkAdmin, async (req, res) => {
 // Lambda에서 Express 앱을 실행하기 위해 모듈을 export 합니다.
 // serverless-http에 basePath 옵션을 추가하여 API Gateway의 스테이지 경로를 올바르게 처리합니다.
 module.exports.handler = async (event, context) => {
-    console.log('Received event:', JSON.stringify(event, null, 2)); 
-    console.log('Request path from proxy parameters:', event.pathParameters ? event.pathParameters.proxy : 'N/A');
-    console.log('Raw path from event:', event.rawPath); 
+  console.log('Received event:', JSON.stringify(event, null, 2));
+  console.log('Request path from proxy parameters:', event.pathParameters ? event.pathParameters.proxy : 'N/A');
+  console.log('Raw path from event:', event.rawPath);
 
-    const handler = serverless(app, {
-        basePath: event.requestContext.stage // API Gateway의 스테이지 이름 (예: 'default')을 basePath로 설정
-    });
-    return handler(event, context);
+  const handler = serverless(app, {
+    basePath: event.requestContext.stage // API Gateway의 스테이지 이름 (예: 'default')을 basePath로 설정
+  });
+  return handler(event, context);
 };
 
 

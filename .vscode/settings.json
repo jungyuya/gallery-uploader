@@ -1,0 +1,7 @@
+{
+  "javascript.validate.enable": false, // JavaScript 파일에 대한 기본 유효성 검사 비활성화
+  "typescript.validate.enable": false, // TypeScript 파일에 대한 기본 유효성 검사 비활성화 (필요한 경우)
+  "files.associations": {
+    "*.js": "javascript" // .js 파일을 JavaScript로 명시적으로 연결
+  }
+}
